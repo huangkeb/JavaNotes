@@ -137,3 +137,226 @@ public String blogPage(@PathVariable int bid,@PathVariable int page,@PathVariabl
 
 
 ## 四、swagger
+
+- swagger号称全世界最流行的API框架
+- 在线自动生成工具->API与API定义同步更新
+- 测试API接口
+- 支持多种语言
+
+### 4.1 在项目中使用swagger
+
+使用spring boot继承swagger
+
+1. 新建一个spring boot项目，添加web启动器
+
+2. 导入依赖
+
+   ```xml
+   <!--swagger2-->
+   <dependency>
+       <groupId>io.springfox</groupId>
+       <artifactId>springfox-swagger2</artifactId>
+       <version>2.9.2</version>
+   </dependency>
+   <!--swagger-ui-->
+   <dependency>
+       <groupId>io.springfox</groupId>
+       <artifactId>springfox-swagger-ui</artifactId>
+       <version>2.9.2</version>
+   </dependency>
+   ```
+
+3. 编写一个hello工程
+
+   ```java
+   @RestController
+   public class HelloController {
+   
+       @RequestMapping("/hello")
+       public String hello(){
+           return "hello";
+       }
+   }
+   ```
+
+4. 配置swagger
+
+   ```java
+   @Configuration
+   @EnableSwagger2
+   public class SwaggerConfig {
+   }
+   ```
+
+5. 测试运行
+
+   http://localhost:8080/swagger-ui.html
+
+![image-20200808194936278](RESTful.assets/image-20200808194936278.png)
+
+可以看到spring boot项目除了hello-controller之外，还存在一个basic-error-controller，是用于错误的请求。
+
+**本来头铁，用的swagger3.0.0版本，结果swagger-ui愣是打不开，然后降到2.9.2之后就可以了。。估计是版本冲突了？**
+
+### 4.2 swagger配置
+
+通常swagger配置就是修改一下swagger-ui中的显示。
+
+```java
+package swagger.study.config;
+
+import com.google.common.base.Predicates;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import springfox.documentation.builders.ApiInfoBuilder;
+import springfox.documentation.builders.PathSelectors;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.service.Contact;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
+
+@Configuration
+@EnableSwagger2
+public class SwaggerConfig {
+    @Bean
+    public Docket webApiConfig(){
+        return new Docket(DocumentationType.SWAGGER_2)
+                .groupName("Study-Api")
+                .apiInfo(webApiInfo())
+                .enable(true)  // 是否启动swagger
+                .select()
+                .paths(Predicates.not(PathSelectors.regex("/error.*")))//屏蔽了error的controller
+                .build();
+    }
+
+    //显示信息
+    private ApiInfo webApiInfo(){
+        return new ApiInfoBuilder()
+                .title("Study-Api")
+                .description("Study-Api")
+                .version("v1.0")
+                .contact(new Contact("KuangShen", "http://kuangstudy.com", "24736743@qq.com"))
+                .build();
+    }
+}
+```
+
+运行结果如下
+
+![image-20200809213511094](RESTful.assets/image-20200809213511094.png)
+
+### 4.3 swaager配置扫描接口
+
+使用select方法，配合build方法进行swagger的一个筛选。去掉一些没有必要的内容。
+
+```java
+@Bean
+public Docket webApiConfig(){
+    return new Docket(DocumentationType.SWAGGER_2)
+            .groupName("Study-Api")
+            .apiInfo(webApiInfo())
+            .select()
+            //RequestHandlerSelectors扫描的方式
+            //basePackage 指定扫描的包
+            //any 扫描全部
+            //none 都不扫描
+            //withClassAnnotation 扫描类上的注解
+            //withMethodAnnotation 扫描方法上的注解
+            .apis(RequestHandlerSelectors.basePackage("swagger.study.controller"))
+            .build();
+}
+```
+
+```java
+@Bean
+public Docket webApiConfig(){
+    return new Docket(DocumentationType.SWAGGER_2)
+            .groupName("Study-Api")
+            .apiInfo(webApiInfo())
+            .enable(true) // 是否启动swagger
+            .select()
+        	//paths 过滤路径
+        	//PathSelectors 过滤路径的选择方式
+            .paths(Predicates.not(PathSelectors.regex("/error.*")))
+            .build();
+}
+```
+
+### 4.4 配置是否启动swagger
+
+```java
+@Bean
+public Docket webApiConfig(){
+    return new Docket(DocumentationType.SWAGGER_2)
+            .groupName("Study-Api")
+            .apiInfo(webApiInfo())
+            .enable(true) // 是否启动swagger
+            .select()
+            .paths(Predicates.not(PathSelectors.regex("/error.*")))
+            .build();
+}
+```
+
+### 4.5 配置API的分组
+
+一个docket对应了一个分组，可以使用多个docket配置不同的内容，对应每个开发者的内容范围，协作开发
+
+```java
+@Bean
+public Docket webApiConfig(){
+    return new Docket(DocumentationType.SWAGGER_2)
+            .groupName("Study-Api")//配置分组
+            .apiInfo(webApiInfo())
+            .enable(true) // 是否启动swagger
+            .select()
+            .paths(Predicates.not(PathSelectors.regex("/error.*")))
+            .build();
+}
+```
+
+```java
+@Bean
+public Docket webApiConfig1(){
+    return new Docket(DocumentationType.SWAGGER_2)
+            .groupName("Study2-Api")
+            .apiInfo(webApiInfo())
+            .enable(true);// 是否显示
+}
+```
+
+![image-20200810185706608](RESTful.assets/image-20200810185706608.png)
+
+### 4.6 配置注解
+
+```java
+@ApiModel("用户实体类")//配置实体类名
+public class User {
+    @ApiModelProperty("用户名")//字段
+    public String username;
+
+    @ApiModelProperty("密码")
+    public String password;
+}
+```
+
+```java
+@GetMapping("/hello")
+public String hello(){
+    return "hello456";
+}
+
+@ApiOperation("获得用户")//方法
+@PostMapping("/user")
+public User user(@ApiParam("用户名") String username//参数){
+    return new User();
+}
+```
+
+### 4.7 优点
+
+1. 可以使用注解把信息展示在页面上
+2. 接口文档实时更新
+3. 可以在线测试
+4. 可以多人协作
+5. 出于安全考虑，上线后必须关闭swagger
